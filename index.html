@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEEE CS - AL-HUSSEIN BIN TALAL UNIVERSITY TERMINAL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/seven-segment" rel="stylesheet">
+    <style>
+        :root {
+            --glow-color: #00FF41;
+            --dim-glow: #003300;
+            --bg-color: #010101;
+            --timer-color: #ff0000;
+        }
+
+        body {
+            background-color: var(--bg-color); color: var(--glow-color);
+            font-family: 'Share Tech Mono', monospace; margin: 0;
+            height: 100vh; overflow: hidden; text-transform: uppercase;
+        }
+
+        /* Scanlines Effect */
+        body::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 200; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+
+        canvas { position: fixed; top: 0; left: 0; z-index: 0; opacity: 0.2; }
+
+        .ui-wrapper {
+            position: relative; z-index: 10; display: grid;
+            grid-template-columns: 240px 1fr 240px; grid-template-rows: 40px 1fr 30px;
+            height: 100vh; padding: 5px; box-sizing: border-box; transition: filter 0.5s ease;
+        }
+
+        /* --- Challenge Overlay --- */
+        #challenge-overlay {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 850px; height: 550px; background: rgba(0, 10, 0, 0.98);
+            border: 1px solid var(--glow-color); z-index: 500; display: none;
+            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        }
+
+        .timer-container {
+            display: flex; height: 180px; margin: 20px 0; overflow: hidden;
+            font-family: 'Seven Segment', sans-serif; font-size: 13em; color: var(--timer-color);
+            text-shadow: 0 0 25px rgba(255, 0, 0, 0.6);
+            mask-image: linear-gradient(to bottom, transparent, black 40%, black 60%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 40%, black 60%, transparent);
+        }
+
+        .digit-slot { position: relative; width: 1ch; height: 180px; overflow: hidden; }
+        .digit-strip { position: absolute; top: 0; transition: transform 0.9s cubic-bezier(0.85, 0, 0.15, 1); display: flex; flex-direction: column; }
+        .digit-strip span { height: 180px; display: flex; align-items: center; justify-content: center; }
+
+        .side-panel { border: 1px solid rgba(0, 255, 65, 0.15); padding: 15px; font-size: 0.75em; background: rgba(0,5,0,0.9); overflow: hidden; }
+        .log-line { color: var(--dim-glow); margin-bottom: 5px; font-size: 0.8em; }
+
+        .main-terminal { border-left: 1px solid rgba(0,255,65,0.2); border-right: 1px solid rgba(0,255,65,0.2); margin: 0 5px; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; padding: 25px; }
+
+        .input-line { display: flex; align-items: center; margin-top: 15px; font-size: 1.2em; }
+        input { background: transparent; border: none; color: var(--glow-color); font-family: inherit; outline: none; width: 0ch; }
+        .cursor { width: 10px; height: 1.2em; background-color: var(--glow-color); animation: blink 0.8s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Failure Tabs (The Original) */
+        .popup-window { position: absolute; z-index: 9999; box-shadow: 10px 10px 0px #000; font-weight: bold; pointer-events: none; animation: shake-tab 0.1s infinite; }
+        .failure-tab { width: 250px; background: #d10000; color: white; border: 2px solid #fff; padding: 15px; font-size: 1.1em; }
+        @keyframes shake-tab { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-2px, 2px); } 75% { transform: translate(2px, -2px); } }
+
+        .success-center-tab { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; background: #000; color: var(--glow-color); border: 2px solid var(--glow-color); padding: 60px; text-align: center; font-size: 2.5em; z-index: 1000; box-shadow: 0 0 50px var(--glow-color); }
+        .shake-screen { animation: screen-shake 0.05s infinite; }
+        @keyframes screen-shake { 0% { transform: translate(4px,4px); } 50% { transform: translate(-4px,-4px); } }
+
+        .header-bar { grid-column: 1 / 4; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,255,65,0.2); padding: 5px 20px; font-size: 0.8em; }
+        
+        .digital-phi-logo {
+            height: 30px;
+            width: auto;
+            filter: grayscale(1) contrast(1.5);
+            opacity: 0.8;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body onclick="initAudio()">
+
+    <canvas id="matrix"></canvas>
+
+    <div id="challenge-overlay">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%; margin-bottom: 20px;">
+            <img src="https://ieeecs-media.computer.org/wp-content/uploads/2018/10/05175239/ieee-cs-logo-rgb-white.png" alt="IEEE CS Logo" style="height: 60px;">
+            <div style="text-align: left; border-left: 2px solid var(--glow-color); padding-left: 20px;">
+                <div style="font-size: 1.3em; color: #fff; letter-spacing: 2px; font-weight: bold;">AL-HUSSEIN BIN TALAL UNIVERSITY</div>
+                <div style="font-size: 0.9em; color: #fff; letter-spacing: 1px; opacity: 0.7;">IEEE COMPUTER SOCIETY / MA'AN, JORDAN</div>
+            </div>
+        </div>
+        
+        <div style="font-size: 1.5em; color: #fff; margin-top: 20px;" id="displayQuestion">--- SYSTEM CHALLENGE ---</div>
+        <div class="timer-container">
+            <div class="digit-slot"><div class="digit-strip" id="tens"><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span></div></div>
+            <div class="digit-slot"><div class="digit-strip" id="units"><span>9</span><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span></div></div>
+        </div>
+        <div class="input-line" style="font-size: 2.5em; border-top: 1px solid var(--glow-color); padding-top: 10px;">
+            <span>DEC_CODE:>_</span>
+            <input type="text" id="overlayInput" autocomplete="off">
+            <div class="cursor"></div>
+        </div>
+    </div>
+
+    <div class="ui-wrapper" id="wrapper">
+        <div class="header-bar">
+            <div style="display: flex; align-items: center;">
+                <svg class="digital-phi-logo" viewBox="0 0 200 200" fill="white">
+                    <circle cx="100" cy="100" r="95" fill="white" stroke="black" stroke-width="5"/>
+                    <path d="M70 100 A30 30 0 0 0 130 100" fill="none" stroke="black" stroke-width="12"/>
+                    <path d="M70 100 A30 30 0 0 1 130 100" fill="none" stroke="black" stroke-width="12"/>
+                    <rect x="90" y="30" width="20" height="130" fill="black"/>
+                    <path d="M90 30 L60 60 L80 60 L110 30 Z" fill="black"/>
+                    <rect x="70" y="150" width="60" height="12" fill="black"/>
+                </svg>
+                <span>AL-HUSSEIN BIN TALAL UNIVERSITY // [KERNEL_ACTIVE]</span>
+            </div>
+            <span style="letter-spacing: 5px;">AHU SECURITY TERMINAL</span>
+            <span id="live-clock">00:00:00</span>
+        </div>
+        <div class="side-panel" id="left-logs"><p style="color:#fff">-- SYSTEM_REGS --</p></div>
+        <div class="main-terminal">
+            <div id="output" style="flex-grow:1; overflow:hidden;">
+                <p>> BOOTING SHADOW_OS v10.0...</p>
+                <p>> SYSTEM: 14 CHALLENGES DETECTED.</p>
+                <p>> HELLO FROM IEEE COMPUTER SOCIETY AT AHU.</p>
+                <p>> AGENT_ID REQUIRED FOR ACCESS.</p>
+            </div>
+            <div class="input-line" id="mainInputContainer">
+                <span id="prompt">AGENT@ROOT:~#&nbsp;</span>
+                <input type="text" id="mainInput" autofocus autocomplete="off">
+                <div class="cursor"></div>
+            </div>
+        </div>
+        <div class="side-panel" id="right-logs"><p style="color:#fff">-- THREAT_ANALYSIS --</p></div>
+        <div class="footer-bar" style="grid-column:1/4; display:flex; justify-content:space-between; padding: 5px 20px; font-size: 0.7em; opacity: 0.5; border-top: 1px solid rgba(0,255,65,0.1);">
+            <span>AHU COMPUTER SOCIETY // IEEE CS Student Branch</span>
+            <span>PRESS [ESC] TO REBOOT TERMINAL</span>
+        </div>
+    </div>
+
+    <script>
+        const rawQuestions = [
+            { q: "HTML: TAG FOR LARGEST HEADING?", a: "h1" },
+            { q: "PYTHON: SYMBOL FOR COMMENTS?", a: "#" },
+            { q: "STORAGE: SSD OR HDD IS FASTER?", a: "ssd" },
+            { q: "NET: PORT NUMBER FOR HTTP?", a: "80" },
+            { q: "GIT: COMMAND TO UPLOAD CODE?", a: "git push" },
+            { q: "PYTHON USES {} FOR CODE BLOCKS? (T/F)", a: "false" },
+            { q: "ROM IS CLEARED ON RESTART? (T/F)", a: "false" },
+            { q: "IPv6 IS SHORTER THAN IPv4? (T/F)", a: "false" },
+            { q: "CLOUD NEEDS LOCAL SERVER? (T/F)", a: "false" },
+            { q: "TERM: FUNCTION CALLS ITSELF?", a: "recursion" },
+            { q: "DB: COMMON LANGUAGE FOR MGMT?", a: "sql" },
+            { q: "C++ SUPPORTS MULTIPLE INHERITANCE? (T/F)", a: "true" },
+            { q: "BIG DATA: 3 Vs - VOL, VEL, VAR? (T/F)", a: "true" },
+            { q: "SWITCH IS A SMART DEVICE? (T/F)", a: "true" }
+        ];
+
+        let randomizedQuestions = {};
+        function shuffleQuestions() {
+            let shuffled = [...rawQuestions].sort(() => Math.random() - 0.5);
+            for(let i = 0; i < 6; i++) { randomizedQuestions[i + 1] = shuffled[i]; }
+        }
+        shuffleQuestions();
+
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        const binary = "01011010"; const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.15)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for(let i = 0; i < drops.length; i++) {
+                const text = binary[Math.floor(Math.random() * binary.length)];
+                ctx.fillStyle = (Math.random() > 0.9) ? "#fff" : "#00FF41";
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 40);
+
+        function addLog() {
+            const logMsgs = ["TRACE_IP_REDIRECT", "DUMPING_MEMORY_0x4F", "SQL_INJECTION_SHIELD", "SSL_HANDSHAKE_OK", "DECRYPTING_PACKET", "MAAN_SERVER_LINKED"];
+            const panel = (Math.random() > 0.5) ? document.getElementById('left-logs') : document.getElementById('right-logs');
+            const p = document.createElement('p'); p.className = 'log-line';
+            p.textContent = `> ${logMsgs[Math.floor(Math.random() * logMsgs.length)]}... [OK]`;
+            panel.appendChild(p);
+            if(panel.children.length > 18) panel.removeChild(panel.children[1]);
+        }
+        setInterval(addLog, 1200);
+
+        const mainInput = document.getElementById('mainInput');
+        const overlayInput = document.getElementById('overlayInput');
+        const overlay = document.getElementById('challenge-overlay');
+        const tensStrip = document.getElementById('tens');
+        const unitsStrip = document.getElementById('units');
+        let step = 0, userName = "", selectedLayer = 0, timeLeft = 60, timerInterval, audioCtx;
+
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+        function playSound(type) {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.gain.value = 0.05; gain.connect(audioCtx.destination);
+            if(type === 'win') {
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                osc.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            } else {
+                osc.type = 'sawtooth'; osc.start();
+                const failInt = setInterval(() => { 
+                    if(document.body.style.backgroundColor !== "rgb(26, 0, 0)") clearInterval(failInt);
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime); 
+                    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.4); 
+                }, 500);
+            }
+        }
+
+        function triggerFailure() {
+            clearInterval(timerInterval);
+            overlay.style.display = 'none';
+            document.body.classList.add('shake-screen');
+            document.body.style.backgroundColor = "#1a0000";
+            playSound('fail');
+            setInterval(() => {
+                const win = document.createElement('div');
+                win.className = 'popup-window failure-tab';
+                win.innerHTML = `⚠️ SECURITY BREACH ⚠️<br>AGENT_${userName}_FAILED<br>SYSTEM_VOID_INFECTED`;
+                win.style.top = Math.random() * 85 + "%"; win.style.left = Math.random() * 85 + "%";
+                document.body.appendChild(win);
+            }, 150);
+        }
+
+        function triggerSuccess() {
+            clearInterval(timerInterval);
+            overlay.style.display = 'none';
+            playSound('win');
+            const win = document.createElement('div');
+            win.className = 'success-center-tab';
+            win.innerHTML = `ACCESS GRANTED<br><span style="font-size:0.3em; color:#fff;">DATA SECURED BY AGENT: ${userName}<br>IEEE CS Student Branch secured your data.</span>`;
+            document.body.appendChild(win);
+        }
+
+        mainInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const val = mainInput.value.trim();
+                mainInput.value = ""; mainInput.style.width = "0ch";
+                if (step === 0) {
+                    userName = val.toUpperCase() || "AGENT_X";
+                    document.getElementById('prompt').textContent = `${userName}@ROOT:~# `;
+                    document.getElementById('output').innerHTML += `<p>> [OK] AGENT VALIDATED. SELECT LAYER [1-6].</p>`;
+                    step = 1;
+                } else if (step === 1) {
+                    if (randomizedQuestions[val]) {
+                        selectedLayer = val;
+                        document.getElementById('wrapper').style.filter = "blur(12px) grayscale(1)";
+                        overlay.style.display = 'flex';
+                        document.getElementById('displayQuestion').textContent = randomizedQuestions[val].q;
+                        overlayInput.focus();
+                        timerInterval = setInterval(() => { 
+                            timeLeft--; 
+                            const tens = Math.floor(timeLeft / 10); const units = timeLeft % 10;
+                            tensStrip.style.transform = `translateY(-${(6 - tens) * 180}px)`;
+                            unitsStrip.style.transform = `translateY(-${(9 - units) * 180}px)`;
+                            if (timeLeft <= 0) triggerFailure(); 
+                        }, 1000);
+                    }
+                }
+            }
+        });
+
+        overlayInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (overlayInput.value.trim().toUpperCase() === randomizedQuestions[selectedLayer].a.toUpperCase()) triggerSuccess();
+                else triggerFailure();
+            }
+        });
+
+        [mainInput, overlayInput].forEach(inp => inp.addEventListener('input', function() { this.style.width = this.value.length + "ch"; }));
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape') location.reload(); });
+        setInterval(() => { document.getElementById('live-clock').textContent = new Date().toLocaleTimeString(); }, 1000);
+    </script>
+</body>
+</html>
